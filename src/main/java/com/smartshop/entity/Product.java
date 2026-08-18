@@ -29,7 +29,7 @@ public class Product {
     @Column(name = "price", precision = 12, scale = 2, nullable = false)
     private BigDecimal price;
 
-    @Column(name = "discount", precision = 5, scale = 2)
+    @Column(name = "discount_percentage", precision = 5, scale = 2)
     private BigDecimal discount;
 
     @Column(name = "image_url")
@@ -58,6 +58,9 @@ public class Product {
 
     @Column(name = "availability")
     private Boolean availability;
+
+    @Column(name = "in_stock_quantity")
+    private Integer inStockQuantity;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -134,6 +137,22 @@ public class Product {
 
     public void setDiscount(BigDecimal discount) {
         this.discount = discount;
+    }
+
+    public BigDecimal getDiscountPercentage() {
+        return discount;
+    }
+
+    public void setDiscountPercentage(BigDecimal discountPercentage) {
+        this.discount = discountPercentage;
+    }
+
+    public Integer getInStockQuantity() {
+        return inStockQuantity;
+    }
+
+    public void setInStockQuantity(Integer inStockQuantity) {
+        this.inStockQuantity = inStockQuantity;
     }
 
     public String getImageUrl() {

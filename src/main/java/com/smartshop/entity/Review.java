@@ -25,8 +25,11 @@ public class Review {
     @Column(name = "title")
     private String title;
 
-    @Column(name = "comment", columnDefinition = "TEXT")
-    private String comment;
+    @Column(name = "content", columnDefinition = "TEXT")
+    private String content;
+
+    @Column(name = "helpful_count")
+    private Integer helpfulCount = 0;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -34,12 +37,12 @@ public class Review {
     public Review() {
     }
 
-    public Review(UUID productId, UUID userId, Integer rating, String title, String comment) {
+    public Review(UUID productId, UUID userId, Integer rating, String title, String content) {
         this.productId = productId;
         this.userId = userId;
         this.rating = rating;
         this.title = title;
-        this.comment = comment;
+        this.content = content;
     }
 
     @PrePersist
@@ -88,12 +91,28 @@ public class Review {
         this.title = title;
     }
 
+    public String getContent() {
+        return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
     public String getComment() {
-        return comment;
+        return content;
     }
 
     public void setComment(String comment) {
-        this.comment = comment;
+        this.content = comment;
+    }
+
+    public Integer getHelpfulCount() {
+        return helpfulCount;
+    }
+
+    public void setHelpfulCount(Integer helpfulCount) {
+        this.helpfulCount = helpfulCount;
     }
 
     public LocalDateTime getCreatedAt() {

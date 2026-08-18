@@ -17,20 +17,8 @@ public class UserPreference {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "preferred_categories", columnDefinition = "TEXT")
-    private String preferredCategories;
-
-    @Column(name = "preferred_brands", columnDefinition = "TEXT")
-    private String preferredBrands;
-
-    @Column(name = "minimum_budget", precision = 12, scale = 2)
-    private BigDecimal minimumBudget;
-
-    @Column(name = "maximum_budget", precision = 12, scale = 2)
-    private BigDecimal maximumBudget;
-
-    @Column(name = "preferred_features", columnDefinition = "TEXT")
-    private String preferredFeatures;
+    @Column(name = "preferences", columnDefinition = "TEXT")
+    private String preferences;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -69,44 +57,12 @@ public class UserPreference {
         this.userId = userId;
     }
 
-    public String getPreferredCategories() {
-        return preferredCategories;
+    public String getPreferences() {
+        return preferences;
     }
 
-    public void setPreferredCategories(String preferredCategories) {
-        this.preferredCategories = preferredCategories;
-    }
-
-    public String getPreferredBrands() {
-        return preferredBrands;
-    }
-
-    public void setPreferredBrands(String preferredBrands) {
-        this.preferredBrands = preferredBrands;
-    }
-
-    public BigDecimal getMinimumBudget() {
-        return minimumBudget;
-    }
-
-    public void setMinimumBudget(BigDecimal minimumBudget) {
-        this.minimumBudget = minimumBudget;
-    }
-
-    public BigDecimal getMaximumBudget() {
-        return maximumBudget;
-    }
-
-    public void setMaximumBudget(BigDecimal maximumBudget) {
-        this.maximumBudget = maximumBudget;
-    }
-
-    public String getPreferredFeatures() {
-        return preferredFeatures;
-    }
-
-    public void setPreferredFeatures(String preferredFeatures) {
-        this.preferredFeatures = preferredFeatures;
+    public void setPreferences(String preferences) {
+        this.preferences = preferences;
     }
 
     public LocalDateTime getCreatedAt() {

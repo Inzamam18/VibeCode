@@ -206,7 +206,7 @@ FROM products WHERE name = 'iPad Pro 12.9' LIMIT 1;
 
 -- Sony A6700 reviews
 INSERT INTO reviews (product_id, rating, title, content) 
-SELECT id, 5, 'Creator\'s dream', 'Exceptional image quality. 4K 120fps is fantastic for video. Autofocus is flawless.' 
+SELECT id, 5, 'Creator''s dream', 'Exceptional image quality. 4K 120fps is fantastic for video. Autofocus is flawless.' 
 FROM products WHERE name = 'Sony A6700' LIMIT 1;
 
 INSERT INTO reviews (product_id, rating, title, content) 

@@ -1,6 +1,8 @@
 package com.smartshop.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -41,19 +43,24 @@ public class Product {
     @Column(name = "review_count")
     private Integer reviewCount;
 
-    @Column(name = "specifications", columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "specifications", columnDefinition = "jsonb")
     private String specifications;
 
-    @Column(name = "features", columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "features", columnDefinition = "jsonb")
     private String features;
 
-    @Column(name = "performance", columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "performance", columnDefinition = "jsonb")
     private String performance;
 
-    @Column(name = "pros", columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "pros", columnDefinition = "jsonb")
     private String pros;
 
-    @Column(name = "cons", columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "cons", columnDefinition = "jsonb")
     private String cons;
 
     @Column(name = "availability")

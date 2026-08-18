@@ -1,6 +1,8 @@
 package com.smartshop.entity;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -17,7 +19,8 @@ public class UserPreference {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "preferences", columnDefinition = "TEXT")
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "preferences", columnDefinition = "jsonb")
     private String preferences;
 
     @Column(name = "created_at", updatable = false)

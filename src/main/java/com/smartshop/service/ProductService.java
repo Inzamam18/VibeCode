@@ -37,34 +37,44 @@ public class ProductService {
         log.info("Fetching products with filters - category: {}, brand: {}, minPrice: {}, maxPrice: {}, minRating: {}, sort: {}",
                 category, brand, minPrice, maxPrice, minRating, sort);
 
-        Specification<Product> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-
-            if (category != null && !category.trim().isEmpty()) {
-                predicates.add(cb.like(cb.lower(root.get("category")), "%" + category.trim().toLowerCase() + "%"));
-            }
-
-            if (brand != null && !brand.trim().isEmpty()) {
-                predicates.add(cb.equal(cb.lower(root.get("brand")), brand.trim().toLowerCase()));
-            }
-
-            if (minPrice != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("price"), minPrice));
-            }
-
-            if (maxPrice != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("price"), maxPrice));
-            }
-
-            if (minRating != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("rating"), minRating));
-            }
-
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-
         Sort sortOrder = parseSortOrder(sort);
-        List<Product> products = productRepository.findAll(spec, sortOrder);
+        boolean hasFilters = (category != null && !category.trim().isEmpty())
+                || (brand != null && !brand.trim().isEmpty())
+                || minPrice != null
+                || maxPrice != null
+                || minRating != null;
+
+        List<Product> products;
+        if (!hasFilters) {
+            products = sortOrder.isSorted() ? productRepository.findAll(sortOrder) : productRepository.findAll();
+        } else {
+            Specification<Product> spec = (root, query, cb) -> {
+                List<Predicate> predicates = new ArrayList<>();
+
+                if (category != null && !category.trim().isEmpty()) {
+                    predicates.add(cb.like(cb.lower(root.get("category")), "%" + category.trim().toLowerCase() + "%"));
+                }
+
+                if (brand != null && !brand.trim().isEmpty()) {
+                    predicates.add(cb.equal(cb.lower(root.get("brand")), brand.trim().toLowerCase()));
+                }
+
+                if (minPrice != null) {
+                    predicates.add(cb.greaterThanOrEqualTo(root.get("price"), minPrice));
+                }
+
+                if (maxPrice != null) {
+                    predicates.add(cb.lessThanOrEqualTo(root.get("price"), maxPrice));
+                }
+
+                if (minRating != null) {
+                    predicates.add(cb.greaterThanOrEqualTo(root.get("rating"), minRating));
+                }
+
+                return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));
+            };
+            products = productRepository.findAll(spec, sortOrder);
+        }
 
         return productMapper.toResponseList(products);
     }

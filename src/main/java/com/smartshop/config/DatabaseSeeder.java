@@ -51,9 +51,15 @@ public class DatabaseSeeder implements CommandLineRunner {
 
     private void seedData() {
         // Users
-        User alice = new User(UUID.randomUUID(), "Alice Johnson", "alice@example.com");
-        User bob = new User(UUID.randomUUID(), "Bob Smith", "bob@example.com");
-        userRepository.saveAll(List.of(alice, bob));
+        User alice = new User();
+        alice.setName("Alice Johnson");
+        alice.setEmail("alice@example.com");
+        alice = userRepository.save(alice);
+
+        User bob = new User();
+        bob.setName("Bob Smith");
+        bob.setEmail("bob@example.com");
+        bob = userRepository.save(bob);
 
         UserPreference alicePref = new UserPreference();
         alicePref.setUserId(alice.getId());

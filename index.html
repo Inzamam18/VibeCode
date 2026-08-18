@@ -1,0 +1,1934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShopWise AI — Smarter Shopping Decisions</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & ReactDOM CDNs -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- Babel Standalone CDN -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            app: {
+              bg: '#FFFFFF',
+              card: '#FFFFFF',
+              border: '#E2E8F0',
+              'border-subtle': '#F1F5F9',
+            },
+            ink: {
+              900: '#111827',
+              700: '#334155',
+              500: '#64748B',
+              400: '#94A3B8',
+              300: '#CBD5E1',
+            },
+            accent: {
+              DEFAULT: '#0B1F3A',
+              hover: '#07162B',
+              subtle: '#EAF1F8',
+              border: '#D3DFEC',
+              light: '#E8EEF5',
+            },
+            success: {
+              DEFAULT: '#166534',
+              bg: '#EEF7F3',
+              border: '#C8E8D9',
+            },
+            warning: {
+              DEFAULT: '#92400E',
+              bg: '#FEF3C7',
+              border: '#FDE68A',
+            },
+            danger: {
+              DEFAULT: '#991B1B',
+              bg: '#FEE2E2',
+              border: '#FECACA',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #FFFFFF;
+      color: #171717;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .app-container {
+      max-width: 1280px;
+      margin-left: auto;
+      margin-right: auto;
+      padding-left: 24px;
+      padding-right: 24px;
+    }
+    @media (max-width: 640px) {
+      .app-container {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+    }
+
+    .page-fade {
+      animation: pageFadeIn 180ms ease-out forwards;
+    }
+    @keyframes pageFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(1, minmax(0, 1fr));
+      gap: 20px;
+      align-items: stretch;
+    }
+    @media (min-width: 640px) {
+      .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (min-width: 1024px) {
+      .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (min-width: 1280px) {
+      .product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+
+    .product-card {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: 14px;
+      overflow: hidden;
+      transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+    }
+    .product-card:hover {
+      transform: translateY(-3px);
+      border-color: #D6D6D0;
+      box-shadow: 0 10px 28px rgba(7, 22, 43, 0.08);
+    }
+
+    .product-image-container {
+      position: relative;
+      width: 100%;
+      height: 210px;
+      padding: 20px;
+      background: #F7F9FC;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .product-image-container img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      transition: transform 200ms ease;
+    }
+    .product-card:hover .product-image-container img {
+      transform: scale(1.02);
+    }
+
+    .product-actions-pinned {
+      margin-top: auto;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #F6F6F3;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #D8D8D2;
+      border-radius: 4px;
+    }
+
+    .skeleton-box {
+      background: linear-gradient(90deg, #F0F0EC 25%, #E6E6E0 50%, #F0F0EC 75%);
+      background-size: 200% 100%;
+      animation: skeletonWave 1.4s infinite linear;
+    }
+    @keyframes skeletonWave {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useCallback } = React;
+
+    // ==========================================
+    // BACKEND API SERVICE LAYER
+    // ==========================================
+    const API_BASE_URL = window.location.port === '8080' ? '/api' : 'http://localhost:8080/api';
+
+    const apiService = {
+      async getProducts(params = {}) {
+        try {
+          const query = new URLSearchParams();
+          if (params.category && params.category !== 'all') query.append('category', params.category);
+          if (params.brand) query.append('brand', params.brand);
+          if (params.minPrice != null) query.append('minPrice', params.minPrice);
+          if (params.maxPrice != null && params.maxPrice < 1000000) query.append('maxPrice', params.maxPrice);
+          if (params.minRating != null) query.append('minRating', params.minRating);
+          if (params.sort) query.append('sort', params.sort);
+
+          const url = `${API_BASE_URL}/products${query.toString() ? '?' + query.toString() : ''}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          return data.map(normalizeProduct);
+        } catch (err) {
+          console.warn('Failed to fetch products from backend; returning fallback products.', err);
+          return [];
+        }
+      },
+
+      async getProductById(id) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/products/${id}`);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          return normalizeProduct(data);
+        } catch (err) {
+          console.warn(`Failed to fetch product ${id}:`, err);
+          return null;
+        }
+      },
+
+      async assistantSearch(query) {
+        const res = await fetch(`${API_BASE_URL}/assistant/search`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        return await res.json();
+      },
+
+      async getWishlist(userId) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/wishlist/${userId}`);
+          if (!res.ok) return [];
+          const data = await res.json();
+          return data.map(normalizeProduct);
+        } catch (err) {
+          console.warn('Failed to fetch wishlist:', err);
+          return [];
+        }
+      },
+
+      async addToWishlist(userId, productId) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/wishlist`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, productId })
+          });
+          return res.ok;
+        } catch (err) {
+          console.warn('Failed to add to wishlist:', err);
+          return false;
+        }
+      },
+
+      async removeFromWishlist(userId, productId) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/wishlist/${productId}?userId=${encodeURIComponent(userId)}`, {
+            method: 'DELETE'
+          });
+          return res.ok;
+        } catch (err) {
+          console.warn('Failed to delete from wishlist:', err);
+          return false;
+        }
+      },
+
+      async getReviews(productId) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/products/${productId}/reviews`);
+          if (!res.ok) return [];
+          return await res.json();
+        } catch (err) {
+          console.warn(`Failed to get reviews for ${productId}:`, err);
+          return [];
+        }
+      },
+
+      async createReview(productId, reviewData) {
+        const res = await fetch(`${API_BASE_URL}/products/${productId}/reviews`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reviewData)
+        });
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        return await res.json();
+      }
+    };
+
+    function normalizeProduct(p) {
+      if (!p) return null;
+      let specs = p.specifications;
+      if (typeof specs === 'string') {
+        try { specs = JSON.parse(specs); } catch { specs = {}; }
+      }
+      let features = p.features;
+      if (typeof features === 'string') {
+        try { features = JSON.parse(features); } catch { features = []; }
+      }
+      let pros = p.pros;
+      if (typeof pros === 'string') {
+        try { pros = JSON.parse(pros); } catch { pros = []; }
+      }
+      let cons = p.cons;
+      if (typeof cons === 'string') {
+        try { cons = JSON.parse(cons); } catch { cons = []; }
+      }
+
+      const numPrice = Number(p.price) || 0;
+      const numDiscount = Number(p.discount || p.discount_percentage) || 0;
+      const calculatedOriginalPrice = numDiscount > 0 ? Math.round(numPrice / (1 - numDiscount / 100)) : null;
+
+      return {
+        id: p.id,
+        name: p.name || 'Product',
+        brand: p.brand || 'Brand',
+        category: (p.category || 'general').toLowerCase(),
+        description: p.description || '',
+        price: numPrice,
+        originalPrice: p.originalPrice || calculatedOriginalPrice,
+        discount: numDiscount,
+        rating: Number(p.rating) || 4.5,
+        reviewCount: Number(p.reviewCount || p.review_count) || 0,
+        imageUrl: p.imageUrl || p.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80',
+        specifications: specs || {},
+        features: Array.isArray(features) ? features : [],
+        pros: Array.isArray(pros) ? pros : [],
+        cons: Array.isArray(cons) ? cons : [],
+        availability: p.availability !== false
+      };
+    }
+
+    function normalizeCat(cat) {
+      if (!cat) return 'laptop';
+      const c = cat.toLowerCase();
+      if (c.includes('lap') || c.includes('mac') || c.includes('comput')) return 'laptop';
+      if (c.includes('phone') || c.includes('mobile') || c.includes('cell') || c.includes('smart')) return 'smartphone';
+      if (c.includes('head') || c.includes('ear') || c.includes('audio') || c.includes('bud')) return 'headphones';
+      if (c.includes('watch')) return 'smartwatch';
+      if (c.includes('tab') || c.includes('ipad')) return 'tablet';
+      if (c.includes('cam')) return 'camera';
+      if (c.includes('shoe') || c.includes('sneaker')) return 'shoes';
+      if (c.includes('bag') || c.includes('pack')) return 'bags';
+      return c;
+    }
+
+    // Fixed Demo User ID for Supabase & Spring Boot Wishlists
+    const DEFAULT_USER_ID = '00000000-0000-0000-0000-000000000001';
+    const getUserId = () => {
+      let u = localStorage.getItem('shopwise_user_uuid');
+      if (!u) {
+        u = DEFAULT_USER_ID;
+        localStorage.setItem('shopwise_user_uuid', u);
+      }
+      return u;
+    };
+
+    // ==========================================
+    // MAIN REACT APPLICATION COMPONENT
+    // ==========================================
+    function App() {
+      // Navigation History Stack
+      const [activeTab, setActiveTabState] = useState('home');
+      const [navHistory, setNavHistory] = useState([]);
+      const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+      const setActiveTab = (nextTab) => {
+        if (nextTab === activeTab) return;
+        setNavHistory(prev => [...prev, activeTab].slice(-30));
+        setActiveTabState(nextTab);
+        setMobileMenuOpen(false);
+        window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0);
+      };
+
+      const goBack = () => {
+        setNavHistory(prev => {
+          if (!prev.length) { setActiveTabState('home'); return []; }
+          const previous = prev[prev.length - 1];
+          setActiveTabState(previous);
+          return prev.slice(0, -1);
+        });
+        window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0);
+      };
+
+      // Persistent User Session
+      const [user, setUser] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('shopwise_user') || 'null'); } catch { return null; }
+      });
+      const [favourites, setFavourites] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('shopwise_favs') || '[]'); } catch { return []; }
+      });
+      const [searchHistory, setSearchHistory] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('shopwise_history') || '[]'); } catch { return []; }
+      });
+
+      useEffect(() => { localStorage.setItem('shopwise_favs', JSON.stringify(favourites)); }, [favourites]);
+      useEffect(() => { localStorage.setItem('shopwise_history', JSON.stringify(searchHistory)); }, [searchHistory]);
+
+      // Product Catalog & Live Data State
+      const [products, setProducts] = useState([]);
+      const [catalogLoading, setCatalogLoading] = useState(true);
+      const [backendOnline, setBackendOnline] = useState(true);
+
+      // Query & Analysis State
+      const [searchQuery, setSearchQuery] = useState('');
+      const [isAnalyzing, setIsAnalyzing] = useState(false);
+      const [extractedReqs, setExtractedReqs] = useState(null);
+
+      // Recommendation & Comparison State
+      const [scoredProducts, setScoredProducts] = useState([]);
+      const [selectedProduct, setSelectedProduct] = useState(null);
+      const [productReviews, setProductReviews] = useState([]);
+      const [reviewsLoading, setReviewsLoading] = useState(false);
+      const [compareList, setCompareList] = useState([]);
+      const [aiVerdict, setAiVerdict] = useState(null);
+      const [isComparing, setIsComparing] = useState(false);
+
+      // Filters
+      const [filterCategory, setFilterCategory] = useState('all');
+      const [filterMaxPrice, setFilterMaxPrice] = useState(200000);
+      const [sortBy, setSortBy] = useState('rating');
+
+      // Modals
+      const [authModal, setAuthModal] = useState({ isOpen: false, isSignup: false, email: '', password: '', name: '' });
+      const [modalData, setModalData] = useState({ isOpen: false, type: 'why_this', product: null, content: {} });
+      const [reviewModal, setReviewModal] = useState({ isOpen: false, rating: 5, title: '', comment: '', submitting: false });
+
+      // Demo Prompts
+      const DEMO_SCENARIOS = [
+        { label: 'Laptop for coding under ₹1.5L', query: 'I need a laptop for coding with 16GB RAM and dedicated GPU under ₹1,50,000.' },
+        { label: 'Phone under ₹30,000', query: 'I need a phone under ₹30,000 with a great camera and battery life.' },
+        { label: 'Headphones with ANC', query: 'I need wireless headphones under ₹30,000 for travel with active noise cancellation.' },
+        { label: 'Smartwatch for outdoors', query: 'I want a rugged titanium smartwatch for sports and outdoor adventures.' }
+      ];
+
+      // Load products from backend on mount and sync wishlist
+      const loadInitialData = useCallback(async () => {
+        setCatalogLoading(true);
+        try {
+          const prods = await apiService.getProducts();
+          if (prods && prods.length > 0) {
+            setProducts(prods);
+            setBackendOnline(true);
+          }
+          // Load wishlist items for current user
+          const savedWishlist = await apiService.getWishlist(getUserId());
+          if (savedWishlist && savedWishlist.length > 0) {
+            const ids = savedWishlist.map(p => p.id);
+            setFavourites(prev => Array.from(new Set([...prev, ...ids])));
+          }
+        } catch (e) {
+          console.warn('Backend offline or error:', e);
+          setBackendOnline(false);
+        } finally {
+          setCatalogLoading(false);
+        }
+      }, []);
+
+      useEffect(() => {
+        loadInitialData();
+      }, [loadInitialData]);
+
+      // Load reviews when selectedProduct changes
+      useEffect(() => {
+        if (selectedProduct && selectedProduct.id) {
+          setReviewsLoading(true);
+          apiService.getReviews(selectedProduct.id)
+            .then(revs => setProductReviews(revs))
+            .catch(() => setProductReviews([]))
+            .finally(() => setReviewsLoading(false));
+        }
+      }, [selectedProduct]);
+
+      // --- DISPATCH SEARCH TO SPRING BOOT AI ASSISTANT ---
+      const handleRunSearch = async (queryOverride) => {
+        const queryText = (queryOverride || searchQuery).trim();
+        if (!queryText) return;
+
+        setSearchQuery(queryText);
+        setIsAnalyzing(true);
+        setActiveTab('understanding');
+
+        try {
+          // Call Spring Boot /api/assistant/search endpoint
+          const searchResult = await apiService.assistantSearch(queryText);
+
+          if (searchResult && searchResult.success) {
+            const reqs = searchResult.interpretedRequirements || {};
+            const parsedReqs = {
+              rawQuery: queryText,
+              category: reqs.category || normalizeCat(queryText),
+              maxBudget: reqs.maxPrice != null ? Number(reqs.maxPrice) : null,
+              minBudget: reqs.minPrice != null ? Number(reqs.minPrice) : null,
+              useCases: reqs.useCase ? [reqs.useCase] : (reqs.useCases || ['everyday use']),
+              requiredFeatures: reqs.requiredFeatures?.length ? reqs.requiredFeatures : ['Optimal performance'],
+              preferredFeatures: reqs.priorities?.length ? reqs.priorities : (reqs.preferredBrands || []),
+              priorities: reqs.priorities || []
+            };
+            setExtractedReqs(parsedReqs);
+
+            // Format ranked products from recommendation engine
+            const formattedScored = (searchResult.rankedProducts || []).map(rp => ({
+              product: normalizeProduct(rp.product),
+              score: {
+                totalScore: Math.round(rp.suitabilityScore || 80),
+                matched: rp.strengths && rp.strengths.length > 0 ? rp.strengths : ['Meets key requirements', 'Reliable performance rating'],
+                missing: rp.tradeoffs && rp.tradeoffs.length > 0 ? rp.tradeoffs : ['Standard configuration'],
+                reason: rp.recommendationReason || `${rp.product.name} scored ${Math.round(rp.suitabilityScore)}% suitability for your criteria.`
+              }
+            }));
+
+            setScoredProducts(formattedScored);
+            setIsAnalyzing(false);
+            return;
+          }
+        } catch (err) {
+          console.warn('Assistant search failed on backend; using local parsing fallback.', err);
+        }
+
+        // Fallback local logic if backend search network issue
+        setTimeout(() => {
+          const lower = queryText.toLowerCase();
+          const category = normalizeCat(lower);
+          const reqs = {
+            rawQuery: queryText,
+            category,
+            maxBudget: 60000,
+            useCases: ['general use'],
+            requiredFeatures: ['Verified performance'],
+            preferredFeatures: ['Standard warranty'],
+            priorities: []
+          };
+          setExtractedReqs(reqs);
+
+          const matchingPool = products.filter(p => normalizeCat(p.category) === category);
+          const pool = matchingPool.length > 0 ? matchingPool : products;
+          const scored = pool.map(p => ({
+            product: p,
+            score: {
+              totalScore: Math.round(p.rating * 20),
+              matched: p.pros || ['Great hardware specifications'],
+              missing: p.cons || ['Standard design'],
+              reason: `${p.name} matches your requirement profile with a strong ${p.rating}/5 rating.`
+            }
+          })).sort((a, b) => b.score.totalScore - a.score.totalScore);
+
+          setScoredProducts(scored);
+          setIsAnalyzing(false);
+        }, 500);
+      };
+
+      // Proceed from Understanding to Results Tab
+      const computeRecommendations = () => {
+        setActiveTab('results');
+        if (extractedReqs) {
+          const newHistory = {
+            id: Date.now().toString(),
+            query: extractedReqs.rawQuery,
+            date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            category: extractedReqs.category,
+            topMatch: scoredProducts[0]?.product?.name || 'Category Best'
+          };
+          setSearchHistory(prev => [newHistory, ...prev.slice(0, 19)]);
+        }
+      };
+
+      // Generate AI Verdict for Side-by-Side Comparison
+      const generateAiVerdict = () => {
+        if (compareList.length < 2) return;
+        setIsComparing(true);
+
+        setTimeout(() => {
+          const topScored = [...compareList].sort((a, b) => b.rating - a.rating)[0];
+          const bestValue = [...compareList].sort((a, b) => a.price - b.price)[0];
+          setAiVerdict({
+            winner: topScored,
+            summary: `${topScored.name} delivers the most balanced overall value in this comparison group, offering top-tier hardware reliability, high user ratings (${topScored.rating}★), and excellent performance fit.`,
+            whyWins: [
+              `Directly satisfies ${extractedReqs?.useCases?.join(', ') || 'essential daily requirements'}`,
+              `High consumer satisfaction: ${topScored.rating} / 5.0 (${topScored.reviewCount.toLocaleString()} verified reviews)`,
+              `Competitive price of ₹${topScored.price.toLocaleString('en-IN')} with proven build quality`
+            ],
+            bestValue: bestValue,
+            drawbackNote: topScored.cons?.[0] || 'Consider individual feature preferences before finalizing your purchase.'
+          });
+          setIsComparing(false);
+        }, 600);
+      };
+
+      // Wishlist / Favourite Actions
+      const toggleFavourite = async (productId) => {
+        const isFav = favourites.includes(productId);
+        const nextFavs = isFav ? favourites.filter(id => id !== productId) : [...favourites, productId];
+        setFavourites(nextFavs);
+
+        const userId = getUserId();
+        if (isFav) {
+          await apiService.removeFromWishlist(userId, productId);
+        } else {
+          await apiService.addToWishlist(userId, productId);
+        }
+      };
+
+      const toggleCompare = (prod) => {
+        if (compareList.some(p => p.id === prod.id)) {
+          setCompareList(prev => prev.filter(p => p.id !== prod.id));
+        } else {
+          if (compareList.length >= 3) {
+            alert('You can compare up to 3 products at a time.');
+            return;
+          }
+          setCompareList(prev => [...prev, prod]);
+        }
+      };
+
+      // Modals
+      const openWhyThis = (product, score) => {
+        setModalData({
+          isOpen: true,
+          type: 'why_this',
+          product,
+          content: {
+            title: `Why ${product.name} Matches`,
+            summary: score.reason || `${product.name} achieved a ${score.totalScore}% suitability index based on your stated parameters and budget.`,
+            reasons: score.matched || []
+          }
+        });
+      };
+
+      const openWhyNotThis = (product, score) => {
+        const top = scoredProducts[0]?.product;
+        setModalData({
+          isOpen: true,
+          type: 'why_not_this',
+          product,
+          content: {
+            title: `Trade-off Assessment: ${product.name}`,
+            summary: `While ${product.name} is priced at ₹${product.price.toLocaleString('en-IN')}, here are the key trade-offs to keep in mind:`,
+            missing: score.missing || []
+          }
+        });
+      };
+
+      // Handle Review Submission
+      const handleReviewSubmit = async (e) => {
+        e.preventDefault();
+        if (!selectedProduct) return;
+        setReviewModal(prev => ({ ...prev, submitting: true }));
+
+        try {
+          const created = await apiService.createReview(selectedProduct.id, {
+            rating: reviewModal.rating,
+            title: reviewModal.title || 'Customer Review',
+            comment: reviewModal.comment,
+            userId: getUserId()
+          });
+          setProductReviews(prev => [created, ...prev]);
+          setReviewModal({ isOpen: false, rating: 5, title: '', comment: '', submitting: false });
+        } catch (err) {
+          alert('Failed to submit review. Please try again.');
+          setReviewModal(prev => ({ ...prev, submitting: false }));
+        }
+      };
+
+      // Discover Filtered Catalog
+      const filteredDiscoverProducts = useMemo(() => {
+        return products.filter(p => {
+          if (filterCategory !== 'all' && normalizeCat(p.category) !== filterCategory) return false;
+          if (p.price > filterMaxPrice) return false;
+          return true;
+        }).sort((a, b) => {
+          if (sortBy === 'price_asc') return a.price - b.price;
+          if (sortBy === 'price_desc') return b.price - a.price;
+          if (sortBy === 'rating') return b.rating - a.rating;
+          return b.rating - a.rating;
+        });
+      }, [products, filterCategory, filterMaxPrice, sortBy]);
+
+      // Match Pill Badge Helper
+      const MatchBadge = ({ score }) => {
+        const isHigh = score >= 85;
+        const isMed = score >= 70;
+        const label = isHigh ? 'Excellent Match' : isMed ? 'Good Match' : 'Fair Match';
+        const bg = isHigh ? 'bg-success-bg text-success border-success-border' : isMed ? 'bg-accent-subtle text-accent border-accent-border' : 'bg-warning-bg text-warning border-warning-border';
+        const dot = isHigh ? 'bg-success' : isMed ? 'bg-accent' : 'bg-warning';
+
+        return (
+          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${bg}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${dot}`}></span>
+            <span>{score}% Match</span>
+            <span className="opacity-40">·</span>
+            <span className="font-medium text-[11px]">{label}</span>
+          </div>
+        );
+      };
+
+      // Global Back Button
+      const BackButton = ({ label = "Back" }) => (
+        <div className="app-container pt-5 pb-1">
+          <button
+            type="button"
+            onClick={goBack}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-500 hover:text-accent transition-colors"
+          >
+            <span className="text-sm">←</span>
+            <span>{label}</span>
+          </button>
+        </div>
+      );
+
+      return (
+        <div className="min-h-screen flex flex-col bg-app-bg text-ink-900">
+          
+          {/* ==========================================
+              1. GLOBAL NAVBAR
+          ========================================== */}
+          <header className="app-navbar sticky top-0 z-40 h-[68px] bg-[#0B1F3A] border-b border-[#07162B]">
+            <div className="app-container h-full flex items-center justify-between">
+              
+              {/* Logo */}
+              <div 
+                onClick={() => setActiveTab('home')} 
+                className="flex items-center gap-2.5 cursor-pointer select-none group"
+              >
+                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-[#0B1F3A] text-xs font-bold tracking-tight">
+                  SW
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm tracking-tight text-white leading-none">
+                    SHOPWISE <span className="text-accent-border font-extrabold">AI</span>
+                  </span>
+                  <span className="text-[10px] text-ink-300 font-medium tracking-wide">
+                    Smarter Decisions
+                  </span>
+                </div>
+              </div>
+
+              {/* Navigation Links */}
+              <nav className="hidden lg:flex items-center gap-6 text-sm font-medium">
+                {[
+                  { id: 'home', label: 'Assistant' },
+                  { id: 'discover', label: 'Catalog' },
+                  { id: 'compare', label: `Compare ${compareList.length ? `(${compareList.length})` : ''}` },
+                  { id: 'favourites', label: `Saved ${favourites.length ? `(${favourites.length})` : ''}` },
+                  { id: 'history', label: 'Searches' },
+                ].map(item => {
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`h-8 px-3 rounded-lg text-xs font-semibold transition-colors ${
+                        isActive 
+                          ? 'bg-white/15 text-white font-bold' 
+                          : 'text-ink-300 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </nav>
+
+              {/* User / Session Area */}
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setAuthModal({ isOpen: true, isSignup: false, email: '', password: '', name: '' })}
+                  className="h-9 px-3.5 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded-lg transition-colors border border-white/10"
+                >
+                  {user ? user.name || 'Account' : 'Sign In'}
+                </button>
+
+                {/* Mobile Menu Button */}
+                <button 
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="lg:hidden w-9 h-9 flex items-center justify-center text-white border border-white/10 rounded-lg"
+                >
+                  ☰
+                </button>
+              </div>
+
+            </div>
+          </header>
+
+          {/* Mobile Menu Dropdown */}
+          {mobileMenuOpen && (
+            <div className="lg:hidden bg-[#0B1F3A] border-b border-[#07162B] px-4 py-3 space-y-1">
+              {['home', 'discover', 'compare', 'favourites', 'history'].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className="w-full text-left px-3 py-2 text-xs font-medium text-ink-300 hover:text-white capitalize"
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* ==========================================
+              MAIN CONTENT CONTAINER
+          ========================================== */}
+          <main className="flex-1">
+
+            {/* --- VIEW 1: HOME / ASSISTANT --- */}
+            {activeTab === 'home' && (
+              <div className="page-fade">
+                
+                {/* Hero Section */}
+                <div className="bg-[#0B1F3A] text-white py-12 sm:py-16 border-b border-[#07162B]">
+                  <div className="app-container max-w-4xl mx-auto text-center space-y-4">
+                    
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full text-xs font-medium text-ink-300 border border-white/10">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span>Spring Boot & Supabase Connected</span>
+                    </div>
+
+                    <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                      Find Exactly What Fits You
+                    </h1>
+
+                    <p className="text-sm text-ink-300 max-w-xl mx-auto leading-relaxed">
+                      Describe your requirements, use-case, and budget in plain English. ShopWise AI evaluates real hardware specifications and scores every product transparently.
+                    </p>
+
+                    {/* Search Input Box */}
+                    <div className="pt-4 max-w-2xl mx-auto">
+                      <div className="bg-white rounded-2xl p-2 shadow-2xl flex items-center gap-2 border border-white/20">
+                        <span className="pl-3 text-ink-400 text-lg">🔍</span>
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleRunSearch()}
+                          placeholder="e.g. I need a laptop for coding under ₹1,50,000 with 16GB RAM"
+                          className="flex-1 text-ink-900 placeholder:text-ink-400 text-sm bg-transparent outline-none px-2 h-11"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRunSearch()}
+                          className="h-11 px-6 bg-ink-900 hover:bg-black text-white font-semibold text-xs rounded-xl transition-colors shadow-md flex items-center gap-1.5"
+                        >
+                          <span>Analyze</span>
+                          <span>→</span>
+                        </button>
+                      </div>
+
+                      {/* Demo Prompts Carousel */}
+                      <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
+                        <span className="text-[11px] text-ink-400 font-medium">Try:</span>
+                        {DEMO_SCENARIOS.map((item, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleRunSearch(item.query)}
+                            className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded-full text-[11px] text-ink-200 border border-white/10 transition-colors"
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* Popular Categories Banner */}
+                <div className="app-container py-12">
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <h2 className="text-xl font-bold text-ink-900">Explore Catalog</h2>
+                      <p className="text-xs text-ink-500 mt-0.5">Explore tested products directly from our Supabase database.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setFilterCategory('all'); setActiveTab('discover'); }}
+                      className="text-xs font-semibold text-accent hover:underline"
+                    >
+                      View All Products ({products.length}) →
+                    </button>
+                  </div>
+
+                  {catalogLoading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                      {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="h-72 rounded-xl skeleton-box"></div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="product-grid">
+                      {products.slice(0, 8).map(prod => (
+                        <div key={prod.id} className="product-card">
+                          <div className="product-image-container">
+                            <img src={prod.imageUrl} alt={prod.name} />
+                            <button
+                              onClick={() => toggleFavourite(prod.id)}
+                              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/95 border border-app-border flex items-center justify-center text-xs hover:bg-white transition"
+                            >
+                              {favourites.includes(prod.id) ? '❤️' : '🤍'}
+                            </button>
+                          </div>
+                          <div className="p-4 flex-1 flex flex-col justify-between">
+                            <div>
+                              <span className="text-[10px] font-bold text-ink-400 uppercase tracking-wider">{prod.brand}</span>
+                              <h3 
+                                onClick={() => { setSelectedProduct(prod); setActiveTab('details'); }}
+                                className="text-sm font-semibold text-ink-900 hover:text-accent cursor-pointer line-clamp-1 mt-0.5 mb-1"
+                              >
+                                {prod.name}
+                              </h3>
+                              <div className="text-[11px] text-ink-500 font-medium mb-2">★ {prod.rating} ({prod.reviewCount.toLocaleString()})</div>
+                              <div className="text-base font-bold text-ink-900 mb-3">₹{prod.price.toLocaleString('en-IN')}</div>
+                            </div>
+                            <div className="product-actions-pinned pt-3 border-t border-app-border flex gap-2">
+                              <button
+                                onClick={() => { setSelectedProduct(prod); setActiveTab('details'); }}
+                                className="flex-1 h-9 bg-app-bg hover:bg-app-border text-ink-900 text-xs font-semibold rounded-lg transition"
+                              >
+                                Details
+                              </button>
+                              <button
+                                onClick={() => toggleCompare(prod)}
+                                className={`px-3 h-9 text-xs font-semibold rounded-lg transition ${
+                                  compareList.some(p => p.id === prod.id)
+                                    ? 'bg-ink-900 text-white'
+                                    : 'bg-white border border-app-border text-ink-700 hover:bg-app-bg'
+                                }`}
+                              >
+                                {compareList.some(p => p.id === prod.id) ? 'Added' : 'Compare'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                </div>
+
+              </div>
+            )}
+
+            {/* --- VIEW 2: UNDERSTANDING REQUIREMENTS --- */}
+            {activeTab === 'understanding' && (
+              <div className="page-fade">
+                <BackButton label="Back to Search" />
+
+                <div className="app-container py-6">
+                  <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-app-border p-6 sm:p-8 shadow-sm">
+                    
+                    {isAnalyzing ? (
+                      <div className="py-12 text-center space-y-3">
+                        <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin mx-auto"></div>
+                        <h3 className="text-base font-bold text-ink-900">Understanding your requirements...</h3>
+                        <p className="text-xs text-ink-500">Spring Boot backend is extracting budget limits, hardware tags, and category rules.</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="border-b border-app-border pb-4 mb-6">
+                          <span className="text-[11px] font-bold text-accent uppercase tracking-wider block">Backend Requirement Analysis</span>
+                          <h2 className="text-xl font-bold text-ink-900 mt-0.5">Here's What We Understood</h2>
+                          <p className="text-xs text-ink-500 mt-1">Review extracted shopping constraints before viewing calculated suitability scores.</p>
+                        </div>
+
+                        <div className="space-y-3.5 mb-6 text-xs">
+                          <div className="p-3.5 bg-app-bg rounded-xl border border-app-border flex justify-between items-center">
+                            <span className="font-semibold text-ink-500">Target Category</span>
+                            <span className="font-bold text-ink-900 capitalize">{extractedReqs?.category}</span>
+                          </div>
+
+                          <div className="p-3.5 bg-app-bg rounded-xl border border-app-border flex justify-between items-center">
+                            <span className="font-semibold text-ink-500">Budget Limit</span>
+                            <span className="font-bold text-ink-900">
+                              {extractedReqs?.maxBudget ? `Up to ₹${extractedReqs.maxBudget.toLocaleString('en-IN')}` : 'Flexible budget'}
+                            </span>
+                          </div>
+
+                          <div className="p-3.5 bg-app-bg rounded-xl border border-app-border">
+                            <span className="font-semibold text-ink-500 block mb-2">Identified Use Cases</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {extractedReqs?.useCases?.map((uc, i) => (
+                                <span key={i} className="px-2.5 py-1 bg-white border border-app-border text-ink-900 rounded font-medium text-[11px]">
+                                  {uc}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="p-3.5 bg-app-bg rounded-xl border border-app-border">
+                            <span className="font-semibold text-ink-500 block mb-2">Priority Features</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {extractedReqs?.priorities?.length > 0 ? (
+                                extractedReqs.priorities.map((rf, i) => (
+                                  <span key={i} className="px-2.5 py-1 bg-success-bg border border-success-border text-success font-medium rounded text-[11px]">
+                                    ✓ {rf}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-ink-400 text-[11px]">Balanced everyday performance</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('home')}
+                            className="px-4 py-2 text-xs font-semibold text-ink-500 hover:text-ink-900 transition"
+                          >
+                            Edit Prompt
+                          </button>
+                          <button
+                            type="button"
+                            onClick={computeRecommendations}
+                            className="px-5 py-2.5 text-xs font-semibold bg-ink-900 hover:bg-accent text-white rounded-xl shadow-sm transition"
+                          >
+                            Show Matching Products →
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* --- VIEW 3: RECOMMENDATION RESULTS --- */}
+            {activeTab === 'results' && (
+              <div className="page-fade">
+                <BackButton label="Back to Prompt" />
+
+                <div className="app-container py-4">
+                  {/* Results Header */}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 mb-6 border-b border-app-border">
+                    <div>
+                      <span className="text-[11px] font-bold text-accent uppercase tracking-wider">Suitability Results</span>
+                      <h1 className="text-2xl font-bold text-ink-900 mt-0.5">Best Matches for Your Needs</h1>
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <span className="px-2.5 py-0.5 bg-white border border-app-border rounded-md text-[11px] font-medium text-ink-700 capitalize">
+                          {extractedReqs?.category}
+                        </span>
+                        {extractedReqs?.maxBudget && (
+                          <span className="px-2.5 py-0.5 bg-white border border-app-border rounded-md text-[11px] font-medium text-ink-700">
+                            ≤ ₹{extractedReqs.maxBudget.toLocaleString('en-IN')}
+                          </span>
+                        )}
+                        {extractedReqs?.useCases?.map((u, i) => (
+                          <span key={i} className="px-2.5 py-0.5 bg-white border border-app-border rounded-md text-[11px] font-medium text-ink-700">
+                            {u}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setActiveTab('understanding')}
+                        className="px-3.5 py-2 bg-white border border-app-border rounded-lg text-xs font-medium text-ink-700 hover:bg-app-bg transition"
+                      >
+                        Adjust Criteria
+                      </button>
+                      {compareList.length > 0 && (
+                        <button
+                          onClick={() => setActiveTab('compare')}
+                          className="px-4 py-2 bg-ink-900 text-white rounded-lg text-xs font-semibold shadow-sm"
+                        >
+                          Compare ({compareList.length}) Selected
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Scored Results Grid */}
+                  {scoredProducts.length === 0 ? (
+                    <div className="p-12 text-center bg-white rounded-2xl border border-app-border">
+                      <p className="text-sm font-semibold text-ink-900">No matching products found for this criteria.</p>
+                      <button
+                        onClick={() => setActiveTab('home')}
+                        className="mt-3 px-4 py-2 bg-ink-900 text-white text-xs font-semibold rounded-lg"
+                      >
+                        Try Another Search
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="product-grid">
+                      {scoredProducts.map(({ product, score }) => {
+                        const isFav = favourites.includes(product.id);
+                        const isComp = compareList.some(p => p.id === product.id);
+
+                        return (
+                          <div key={product.id} className="product-card">
+                            
+                            <div className="product-image-container">
+                              <img src={product.imageUrl} alt={product.name} />
+                              
+                              <div className="absolute top-3 left-3">
+                                <MatchBadge score={score.totalScore} />
+                              </div>
+
+                              <button
+                                onClick={() => toggleFavourite(product.id)}
+                                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/95 border border-app-border flex items-center justify-center text-xs hover:bg-white transition"
+                              >
+                                {isFav ? '❤️' : '🤍'}
+                              </button>
+                            </div>
+
+                            <div className="p-4 flex-1 flex flex-col justify-between">
+                              <div>
+                                <div className="flex justify-between items-start">
+                                  <span className="text-[10px] font-bold text-ink-400 uppercase tracking-wider">{product.brand}</span>
+                                  <span className="text-[11px] font-semibold text-ink-600">★ {product.rating}</span>
+                                </div>
+
+                                <h3 
+                                  onClick={() => { setSelectedProduct(product); setActiveTab('details'); }}
+                                  className="text-sm font-semibold text-ink-900 hover:text-accent cursor-pointer line-clamp-1 mt-0.5 mb-1"
+                                >
+                                  {product.name}
+                                </h3>
+
+                                <div className="flex items-baseline gap-2 mb-3">
+                                  <span className="text-base font-bold text-ink-900">₹{product.price.toLocaleString('en-IN')}</span>
+                                  {product.originalPrice && (
+                                    <span className="text-xs text-ink-400 line-through">₹{product.originalPrice.toLocaleString('en-IN')}</span>
+                                  )}
+                                </div>
+
+                                {/* Strengths and Trade-offs bullets */}
+                                <div className="space-y-1 mb-4 text-[11px]">
+                                  {score.matched.slice(0, 2).map((item, idx) => (
+                                    <div key={idx} className="flex items-center gap-1.5 text-success font-medium truncate">
+                                      <span>✓</span> <span className="truncate">{item}</span>
+                                    </div>
+                                  ))}
+                                  {score.missing.slice(0, 1).map((item, idx) => (
+                                    <div key={idx} className="flex items-center gap-1.5 text-ink-400 truncate">
+                                      <span>✗</span> <span className="truncate">{item}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Pinned Action Controls */}
+                              <div className="product-actions-pinned pt-3 border-t border-app-border space-y-2">
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => openWhyThis(product, score)}
+                                    className="h-8 bg-app-bg hover:bg-app-border text-ink-700 text-[11px] font-semibold rounded-lg transition"
+                                  >
+                                    Why This?
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openWhyNotThis(product, score)}
+                                    className="h-8 bg-app-bg hover:bg-app-border text-ink-700 text-[11px] font-semibold rounded-lg transition"
+                                  >
+                                    Trade-offs
+                                  </button>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => toggleCompare(product)}
+                                  className={`w-full h-9 text-xs font-semibold rounded-lg transition ${
+                                    isComp
+                                      ? 'bg-ink-900 text-white'
+                                      : 'bg-white border border-app-border text-ink-900 hover:bg-app-bg'
+                                  }`}
+                                >
+                                  {isComp ? '✓ In Comparison' : '+ Add to Compare'}
+                                </button>
+                              </div>
+
+                            </div>
+
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* --- VIEW 4: CATALOG DISCOVER --- */}
+            {activeTab === 'discover' && (
+              <div className="page-fade">
+                <div className="app-container py-6">
+                  
+                  <div className="mb-6">
+                    <h1 className="text-2xl font-bold text-ink-900">Product Catalog</h1>
+                    <p className="text-xs text-ink-500 mt-1">Browse and filter our verified database of consumer tech products.</p>
+                  </div>
+
+                  {/* Category Pills */}
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar pb-3 mb-6">
+                    {[
+                      { key: 'all', label: 'All Products' },
+                      { key: 'smartphone', label: 'Smartphones' },
+                      { key: 'laptop', label: 'Laptops' },
+                      { key: 'headphones', label: 'Headphones' },
+                      { key: 'smartwatch', label: 'Smartwatches' },
+                      { key: 'camera', label: 'Cameras' }
+                    ].map(tab => (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setFilterCategory(tab.key)}
+                        className={`h-9 px-4 rounded-xl text-xs font-medium whitespace-nowrap transition ${
+                          filterCategory === tab.key
+                            ? 'bg-ink-900 text-white font-semibold shadow-sm'
+                            : 'bg-white border border-app-border text-ink-700 hover:bg-app-bg'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Filter Sidebar & Product Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+                    
+                    {/* Controls Sidebar */}
+                    <div className="bg-white p-5 rounded-2xl border border-app-border space-y-5">
+                      <div className="flex items-center justify-between border-b border-app-border pb-3">
+                        <span className="text-xs font-bold text-ink-900 uppercase tracking-wider">Filters</span>
+                        <button
+                          type="button"
+                          onClick={() => { setFilterMaxPrice(200000); setSortBy('rating'); setFilterCategory('all'); }}
+                          className="text-[11px] font-semibold text-accent hover:underline"
+                        >
+                          Reset
+                        </button>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <label className="text-xs font-medium text-ink-700">Max Budget</label>
+                          <span className="text-xs font-bold text-ink-900">₹{filterMaxPrice.toLocaleString('en-IN')}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="10000"
+                          max="200000"
+                          step="5000"
+                          value={filterMaxPrice}
+                          onChange={(e) => setFilterMaxPrice(parseInt(e.target.value))}
+                          className="w-full accent-accent cursor-pointer"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-medium text-ink-700 block mb-1.5">Sort Results</label>
+                        <select
+                          value={sortBy}
+                          onChange={(e) => setSortBy(e.target.value)}
+                          className="w-full h-11 bg-app-bg border border-app-border rounded-xl px-3 text-xs font-medium focus:outline-none focus:border-accent"
+                        >
+                          <option value="rating">Highest Rating</option>
+                          <option value="price_asc">Price: Low to High</option>
+                          <option value="price_desc">Price: High to Low</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Catalog Grid */}
+                    <div className="lg:col-span-3">
+                      {filteredDiscoverProducts.length === 0 ? (
+                        <div className="p-12 text-center bg-white rounded-2xl border border-app-border">
+                          <p className="text-sm font-semibold text-ink-900">No products match your selected filters.</p>
+                          <button
+                            onClick={() => { setFilterMaxPrice(200000); setFilterCategory('all'); }}
+                            className="mt-3 px-4 py-2 bg-app-bg hover:bg-app-border text-ink-900 text-xs font-semibold rounded-lg transition"
+                          >
+                            Reset Filters
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                          {filteredDiscoverProducts.map(prod => (
+                            <div key={prod.id} className="product-card">
+                              
+                              <div className="product-image-container">
+                                <img src={prod.imageUrl} alt={prod.name} />
+                                <button
+                                  onClick={() => toggleFavourite(prod.id)}
+                                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/95 border border-app-border flex items-center justify-center text-xs hover:bg-white transition"
+                                >
+                                  {favourites.includes(prod.id) ? '❤️' : '🤍'}
+                                </button>
+                              </div>
+
+                              <div className="p-4 flex-1 flex flex-col justify-between">
+                                <div>
+                                  <span className="text-[10px] font-bold text-ink-400 uppercase tracking-wider">{prod.brand}</span>
+                                  <h3 
+                                    onClick={() => { setSelectedProduct(prod); setActiveTab('details'); }}
+                                    className="text-sm font-semibold text-ink-900 hover:text-accent cursor-pointer line-clamp-1 mt-0.5 mb-1"
+                                  >
+                                    {prod.name}
+                                  </h3>
+                                  <div className="text-[11px] text-ink-500 font-medium mb-2">★ {prod.rating} ({prod.reviewCount.toLocaleString()})</div>
+                                  <div className="text-base font-bold text-ink-900 mb-3">₹{prod.price.toLocaleString('en-IN')}</div>
+                                </div>
+
+                                <div className="product-actions-pinned pt-3 border-t border-app-border flex gap-2">
+                                  <button
+                                    onClick={() => { setSelectedProduct(prod); setActiveTab('details'); }}
+                                    className="flex-1 h-9 bg-app-bg hover:bg-app-border text-ink-900 text-xs font-semibold rounded-lg transition"
+                                  >
+                                    View Details
+                                  </button>
+                                  <button
+                                    onClick={() => toggleCompare(prod)}
+                                    className={`px-3.5 h-9 text-xs font-semibold rounded-lg transition ${
+                                      compareList.some(p => p.id === prod.id)
+                                        ? 'bg-ink-900 text-white'
+                                        : 'bg-white border border-app-border text-ink-700 hover:bg-app-bg'
+                                    }`}
+                                  >
+                                    {compareList.some(p => p.id === prod.id) ? 'Added' : 'Compare'}
+                                  </button>
+                                </div>
+                              </div>
+
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* --- VIEW 5: PRODUCT DETAILS & REVIEWS --- */}
+            {activeTab === 'details' && selectedProduct && (
+              <div className="page-fade">
+                <BackButton label="Back" />
+
+                <div className="app-container py-4 space-y-6">
+                  <div className="max-w-5xl mx-auto bg-white rounded-2xl border border-app-border p-6 sm:p-8 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-8">
+                    
+                    {/* Left: Product Image & Buttons */}
+                    <div>
+                      <div className="h-80 bg-app-bg rounded-xl border border-app-border flex items-center justify-center p-8 mb-4 overflow-hidden">
+                        <img src={selectedProduct.imageUrl} alt={selectedProduct.name} className="max-h-full max-w-full object-contain" />
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleFavourite(selectedProduct.id)}
+                          className="flex-1 h-11 bg-app-bg hover:bg-app-border border border-app-border font-semibold text-xs rounded-xl transition"
+                        >
+                          {favourites.includes(selectedProduct.id) ? '❤️ Saved to Favourites' : '🤍 Save to Favourites'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleCompare(selectedProduct)}
+                          className="flex-1 h-11 bg-ink-900 hover:bg-accent text-white font-semibold text-xs rounded-xl transition"
+                        >
+                          ⚖️ {compareList.some(p => p.id === selectedProduct.id) ? 'In Comparison' : 'Add to Compare'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Right: Specs, Pros/Cons */}
+                    <div>
+                      <span className="text-[11px] font-bold text-accent uppercase tracking-wider">{selectedProduct.brand}</span>
+                      <h1 className="text-2xl font-bold text-ink-900 tracking-tight mt-1 mb-2">{selectedProduct.name}</h1>
+                      
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="text-2xl font-bold text-ink-900">₹{selectedProduct.price.toLocaleString('en-IN')}</span>
+                        {selectedProduct.originalPrice && (
+                          <span className="text-sm text-ink-400 line-through">₹{selectedProduct.originalPrice.toLocaleString('en-IN')}</span>
+                        )}
+                        <span className="text-xs font-semibold text-ink-600 bg-app-bg border border-app-border px-2.5 py-0.5 rounded-md">
+                          ★ {selectedProduct.rating} / 5.0
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-ink-500 leading-relaxed mb-6">{selectedProduct.description}</p>
+
+                      <h3 className="text-xs font-bold text-ink-900 uppercase tracking-wider mb-2">Technical Specifications</h3>
+                      <div className="bg-app-bg rounded-xl p-4 text-xs space-y-2 mb-6 border border-app-border">
+                        {Object.entries(selectedProduct.specifications || {}).map(([k, v]) => (
+                          <div key={k} className="flex justify-between border-b border-app-border/70 pb-1.5 last:border-0 last:pb-0">
+                            <span className="font-medium text-ink-500 capitalize">{k.replace(/_/g, ' ')}</span>
+                            <span className="font-bold text-ink-900">{String(v)}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3.5 bg-success-bg rounded-xl border border-success-border">
+                          <span className="text-[10px] font-bold text-success uppercase tracking-wider block mb-1">Key Strengths</span>
+                          <ul className="text-[11px] text-ink-900 space-y-1 list-disc list-inside">
+                            {selectedProduct.pros?.map((p, i) => <li key={i}>{p}</li>)}
+                          </ul>
+                        </div>
+                        <div className="p-3.5 bg-warning-bg rounded-xl border border-warning-border">
+                          <span className="text-[10px] font-bold text-warning uppercase tracking-wider block mb-1">Trade-offs</span>
+                          <ul className="text-[11px] text-ink-900 space-y-1 list-disc list-inside">
+                            {selectedProduct.cons?.map((c, i) => <li key={i}>{c}</li>)}
+                          </ul>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+
+                  {/* Customer Reviews Section */}
+                  <div className="max-w-5xl mx-auto bg-white rounded-2xl border border-app-border p-6 sm:p-8 shadow-sm">
+                    <div className="flex justify-between items-center border-b border-app-border pb-4 mb-6">
+                      <div>
+                        <h3 className="text-base font-bold text-ink-900">Customer Reviews</h3>
+                        <p className="text-xs text-ink-500">Verified feedback and ratings stored in PostgreSQL.</p>
+                      </div>
+                      <button
+                        onClick={() => setReviewModal({ isOpen: true, rating: 5, title: '', comment: '', submitting: false })}
+                        className="px-4 py-2 bg-ink-900 hover:bg-accent text-white text-xs font-semibold rounded-lg transition"
+                      >
+                        + Write a Review
+                      </button>
+                    </div>
+
+                    {reviewsLoading ? (
+                      <p className="text-xs text-ink-400">Loading reviews...</p>
+                    ) : productReviews.length === 0 ? (
+                      <p className="text-xs text-ink-500 py-4 text-center">No reviews yet for this product. Be the first to leave one!</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {productReviews.map(r => (
+                          <div key={r.id} className="p-4 bg-app-bg rounded-xl border border-app-border space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs font-bold text-ink-900">{r.title || 'Review'}</span>
+                              <span className="text-xs text-amber-500 font-bold">{'★'.repeat(r.rating || 5)}</span>
+                            </div>
+                            <p className="text-xs text-ink-600 leading-relaxed">{r.comment}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+            {/* --- VIEW 6: COMPARISON MATRIX & AI VERDICT --- */}
+            {activeTab === 'compare' && (
+              <div className="page-fade">
+                <BackButton label="Back" />
+
+                <div className="app-container py-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-app-border pb-4">
+                    <div>
+                      <h1 className="text-2xl font-bold text-ink-900 tracking-tight">Side-by-Side Comparison</h1>
+                      <p className="text-xs text-ink-500 mt-0.5">Objective feature matrix and trade-off analysis.</p>
+                    </div>
+                    {compareList.length >= 2 && (
+                      <button
+                        type="button"
+                        onClick={generateAiVerdict}
+                        disabled={isComparing}
+                        className="px-5 py-2.5 bg-ink-900 hover:bg-accent text-white text-xs font-semibold rounded-xl shadow-sm transition flex items-center gap-2"
+                      >
+                        {isComparing ? (
+                          <>
+                            <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                            <span>Evaluating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>✨ Generate Comparison Verdict</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  {compareList.length === 0 ? (
+                    <div className="p-12 text-center bg-white rounded-2xl border border-app-border">
+                      <span className="text-2xl block mb-2">⚖️</span>
+                      <h3 className="text-sm font-bold text-ink-900">No products added for comparison</h3>
+                      <p className="text-xs text-ink-500 mt-1 mb-4">Select up to 3 products from the catalog to compare specifications.</p>
+                      <button
+                        onClick={() => setActiveTab('discover')}
+                        className="px-4 py-2 bg-ink-900 text-white text-xs font-semibold rounded-lg"
+                      >
+                        Browse Products
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      
+                      {/* AI Verdict Box */}
+                      {aiVerdict && (
+                        <div className="p-5 sm:p-6 bg-app-bg rounded-2xl border border-accent-border space-y-3 shadow-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 bg-accent text-white rounded-md text-[10px] font-bold uppercase tracking-wider">AI Verdict</span>
+                            <h3 className="text-sm font-bold text-ink-900">Recommended Winner: {aiVerdict.winner?.name}</h3>
+                          </div>
+                          <p className="text-xs text-ink-700 leading-relaxed">{aiVerdict.summary}</p>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+                            <div className="p-3 bg-white rounded-xl border border-app-border">
+                              <span className="font-bold text-success block mb-1 text-[11px]">Why It Wins:</span>
+                              <ul className="space-y-1 text-ink-700 text-[11px] list-disc list-inside">
+                                {aiVerdict.whyWins?.map((w, i) => <li key={i}>{w}</li>)}
+                              </ul>
+                            </div>
+                            <div className="p-3 bg-white rounded-xl border border-app-border">
+                              <span className="font-bold text-warning block mb-1 text-[11px]">Trade-off Note:</span>
+                              <p className="text-ink-700 text-[11px]">{aiVerdict.drawbackNote}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Clean Matrix Table */}
+                      <div className="bg-white rounded-2xl border border-app-border overflow-x-auto custom-scrollbar shadow-sm">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="border-b border-app-border bg-app-bg">
+                              <th className="p-4 text-[11px] font-bold text-ink-400 uppercase min-w-[140px]">Feature</th>
+                              {compareList.map(p => (
+                                <th key={p.id} className="p-4 min-w-[200px]">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <span className="text-[10px] font-bold text-ink-400 uppercase">{p.brand}</span>
+                                      <h4 className="text-xs font-bold text-ink-900 line-clamp-1">{p.name}</h4>
+                                      <span className="text-sm font-bold text-ink-900 block mt-0.5">₹{p.price.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <button onClick={() => toggleCompare(p)} className="text-ink-400 hover:text-danger text-xs p-1">
+                                      ✕
+                                    </button>
+                                  </div>
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-app-border text-xs">
+                            <tr>
+                              <td className="p-4 font-semibold text-ink-500">Customer Rating</td>
+                              {compareList.map(p => (
+                                <td key={p.id} className="p-4 font-bold text-ink-900">★ {p.rating} / 5.0</td>
+                              ))}
+                            </tr>
+                            {Object.keys(compareList[0]?.specifications || {}).map(specKey => (
+                              <tr key={specKey}>
+                                <td className="p-4 font-semibold text-ink-500 capitalize">{specKey.replace(/_/g, ' ')}</td>
+                                {compareList.map(p => (
+                                  <td key={p.id} className="p-4 text-ink-800">
+                                    {String(p.specifications[specKey] || '—')}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* --- VIEW 7: FAVOURITES (WISHLIST) --- */}
+            {activeTab === 'favourites' && (
+              <div className="page-fade">
+                <BackButton label="Back" />
+
+                <div className="app-container py-4">
+                  <h1 className="text-2xl font-bold text-ink-900 tracking-tight mb-4">Saved Favourites</h1>
+                  
+                  {favourites.length === 0 ? (
+                    <div className="p-12 text-center bg-white rounded-2xl border border-app-border">
+                      <span className="text-2xl block mb-2">❤️</span>
+                      <h3 className="text-sm font-bold text-ink-900">No favourites saved yet</h3>
+                      <p className="text-xs text-ink-500 mt-1 mb-4">Save products you like to synchronize with your account.</p>
+                      <button
+                        onClick={() => setActiveTab('discover')}
+                        className="px-4 py-2 bg-ink-900 text-white text-xs font-semibold rounded-lg"
+                      >
+                        Explore Products
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="product-grid">
+                      {products.filter(p => favourites.includes(p.id)).map(prod => (
+                        <div key={prod.id} className="product-card">
+                          <div className="product-image-container">
+                            <img src={prod.imageUrl} alt={prod.name} />
+                            <button
+                              onClick={() => toggleFavourite(prod.id)}
+                              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/95 border border-app-border flex items-center justify-center text-xs hover:bg-white transition"
+                            >
+                              ❤️
+                            </button>
+                          </div>
+                          <div className="p-4 flex-1 flex flex-col justify-between">
+                            <div>
+                              <span className="text-[10px] font-bold text-ink-400 uppercase tracking-wider">{prod.brand}</span>
+                              <h3 
+                                onClick={() => { setSelectedProduct(prod); setActiveTab('details'); }}
+                                className="text-sm font-semibold text-ink-900 hover:text-accent cursor-pointer line-clamp-1 mt-0.5 mb-1"
+                              >
+                                {prod.name}
+                              </h3>
+                              <div className="text-[11px] text-ink-500 font-medium mb-2">★ {prod.rating} ({prod.reviewCount.toLocaleString()})</div>
+                              <div className="text-base font-bold text-ink-900 mb-3">₹{prod.price.toLocaleString('en-IN')}</div>
+                            </div>
+                            <div className="product-actions-pinned pt-3 border-t border-app-border flex gap-2">
+                              <button
+                                onClick={() => { setSelectedProduct(prod); setActiveTab('details'); }}
+                                className="flex-1 h-9 bg-app-bg hover:bg-app-border text-ink-900 text-xs font-semibold rounded-lg transition"
+                              >
+                                Details
+                              </button>
+                              <button
+                                onClick={() => toggleCompare(prod)}
+                                className="px-3.5 h-9 bg-white border border-app-border text-ink-700 text-xs font-semibold rounded-lg hover:bg-app-bg transition"
+                              >
+                                Compare
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* --- VIEW 8: SEARCH HISTORY --- */}
+            {activeTab === 'history' && (
+              <div className="page-fade">
+                <BackButton label="Back" />
+
+                <div className="app-container py-4">
+                  <div className="max-w-3xl mx-auto">
+                    <div className="flex justify-between items-center mb-4">
+                      <h1 className="text-2xl font-bold text-ink-900">Recent Searches</h1>
+                      {searchHistory.length > 0 && (
+                        <button
+                          onClick={() => setSearchHistory([])}
+                          className="text-xs text-danger font-semibold hover:underline"
+                        >
+                          Clear History
+                        </button>
+                      )}
+                    </div>
+
+                    {searchHistory.length === 0 ? (
+                      <div className="p-12 text-center bg-white rounded-2xl border border-app-border">
+                        <p className="text-xs text-ink-500">No search history recorded yet.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {searchHistory.map(h => (
+                          <div key={h.id} className="p-4 bg-white rounded-xl border border-app-border flex justify-between items-center">
+                            <div>
+                              <p className="text-xs font-bold text-ink-900">"{h.query}"</p>
+                              <span className="text-[10px] text-ink-400">{h.date} · Top Result: {h.topMatch}</span>
+                            </div>
+                            <button
+                              onClick={() => handleRunSearch(h.query)}
+                              className="px-3 py-1.5 bg-app-bg hover:bg-app-border rounded-lg text-xs font-semibold text-ink-700 transition"
+                            >
+                              Re-Run
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </main>
+
+          {/* ==========================================
+              MODALS
+          ========================================== */}
+          
+          {/* Why This & Trade-offs Modal */}
+          {modalData.isOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/40 backdrop-blur-sm">
+              <div className="bg-white rounded-2xl border border-app-border p-6 max-w-md w-full shadow-2xl space-y-4">
+                <div className="flex justify-between items-center border-b border-app-border pb-3">
+                  <h3 className="text-sm font-bold text-ink-900">{modalData.content.title}</h3>
+                  <button onClick={() => setModalData({ ...modalData, isOpen: false })} className="text-ink-400 hover:text-ink-900 text-xs">✕</button>
+                </div>
+
+                <p className="text-xs text-ink-600 leading-relaxed">{modalData.content.summary}</p>
+
+                {modalData.type === 'why_this' && modalData.content.reasons && (
+                  <div className="space-y-1.5 bg-success-bg/40 p-3 rounded-xl border border-success-border text-xs">
+                    <span className="font-bold text-success block mb-1">Key Strengths & Matches:</span>
+                    {modalData.content.reasons.map((r, i) => (
+                      <div key={i} className="text-ink-800 text-[11px] flex items-start gap-1.5">
+                        <span className="text-success">✓</span> <span>{r}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {modalData.type === 'why_not_this' && modalData.content.missing && (
+                  <div className="space-y-1.5 bg-warning-bg/40 p-3 rounded-xl border border-warning-border text-xs">
+                    <span className="font-bold text-warning block mb-1">Trade-offs & Gaps:</span>
+                    {modalData.content.missing.map((m, i) => (
+                      <div key={i} className="text-ink-800 text-[11px] flex items-start gap-1.5">
+                        <span className="text-warning">✗</span> <span>{m}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setModalData({ ...modalData, isOpen: false })}
+                  className="w-full h-10 bg-ink-900 hover:bg-accent text-white font-semibold text-xs rounded-xl transition"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Write Review Modal */}
+          {reviewModal.isOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/40 backdrop-blur-sm">
+              <div className="bg-white rounded-2xl border border-app-border p-6 max-w-md w-full shadow-2xl">
+                <div className="flex justify-between items-center border-b border-app-border pb-3 mb-4">
+                  <h3 className="text-sm font-bold text-ink-900">Review {selectedProduct?.name}</h3>
+                  <button onClick={() => setReviewModal({ ...reviewModal, isOpen: false })} className="text-ink-400 hover:text-ink-900 text-xs">✕</button>
+                </div>
+
+                <form onSubmit={handleReviewSubmit} className="space-y-3.5 text-xs">
+                  <div>
+                    <label className="font-medium text-ink-700 block mb-1">Rating</label>
+                    <select
+                      value={reviewModal.rating}
+                      onChange={(e) => setReviewModal({ ...reviewModal, rating: parseInt(e.target.value) })}
+                      className="w-full h-10 px-3 rounded-xl border border-app-border bg-app-bg text-xs"
+                    >
+                      <option value={5}>★★★★★ (5 - Excellent)</option>
+                      <option value={4}>★★★★☆ (4 - Good)</option>
+                      <option value={3}>★★★☆☆ (3 - Average)</option>
+                      <option value={2}>★★☆☆☆ (2 - Below Average)</option>
+                      <option value={1}>★☆☆☆☆ (1 - Poor)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-medium text-ink-700 block mb-1">Review Headline</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Great daily productivity laptop"
+                      value={reviewModal.title}
+                      onChange={(e) => setReviewModal({ ...reviewModal, title: e.target.value })}
+                      className="w-full h-10 px-3 rounded-xl border border-app-border bg-app-bg text-xs focus:outline-none focus:border-accent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-medium text-ink-700 block mb-1">Review Comments</label>
+                    <textarea
+                      required
+                      rows={3}
+                      placeholder="Share your detailed experience with this product..."
+                      value={reviewModal.comment}
+                      onChange={(e) => setReviewModal({ ...reviewModal, comment: e.target.value })}
+                      className="w-full p-3 rounded-xl border border-app-border bg-app-bg text-xs focus:outline-none focus:border-accent"
+                    ></textarea>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={reviewModal.submitting}
+                    className="w-full h-10 bg-ink-900 hover:bg-accent text-white font-semibold rounded-xl text-xs transition"
+                  >
+                    {reviewModal.submitting ? 'Submitting...' : 'Submit Review'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Authentication Modal */}
+          {authModal.isOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-900/40 backdrop-blur-sm">
+              <div className="bg-white rounded-2xl border border-app-border p-6 max-w-sm w-full shadow-xl">
+                <div className="flex justify-between items-center pb-3 border-b border-app-border mb-4">
+                  <h3 className="text-base font-bold text-ink-900">
+                    {authModal.isSignup ? 'Create Account' : 'Sign In to ShopWise'}
+                  </h3>
+                  <button onClick={() => setAuthModal({ ...authModal, isOpen: false })} className="text-ink-400 hover:text-ink-900 text-sm">✕</button>
+                </div>
+
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const authUser = { name: authModal.name || 'Shopper', email: authModal.email || 'user@shopwise.ai' };
+                  setUser(authUser);
+                  localStorage.setItem('shopwise_user', JSON.stringify(authUser));
+                  setAuthModal({ ...authModal, isOpen: false });
+                }} className="space-y-3.5 text-xs">
+                  {authModal.isSignup && (
+                    <div>
+                      <label className="font-medium text-ink-700 block mb-1">Full Name</label>
+                      <input
+                        type="text"
+                        required
+                        value={authModal.name}
+                        onChange={(e) => setAuthModal({ ...authModal, name: e.target.value })}
+                        className="w-full h-11 px-3 rounded-xl border border-app-border bg-app-bg text-xs focus:outline-none focus:border-accent"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="font-medium text-ink-700 block mb-1">Email</label>
+                    <input
+                      type="email"
+                      required
+                      value={authModal.email}
+                      onChange={(e) => setAuthModal({ ...authModal, email: e.target.value })}
+                      className="w-full h-11 px-3 rounded-xl border border-app-border bg-app-bg text-xs focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-medium text-ink-700 block mb-1">Password</label>
+                    <input
+                      type="password"
+                      required
+                      value={authModal.password}
+                      onChange={(e) => setAuthModal({ ...authModal, password: e.target.value })}
+                      className="w-full h-11 px-3 rounded-xl border border-app-border bg-app-bg text-xs focus:outline-none focus:border-accent"
+                    />
+                  </div>
+
+                  <button type="submit" className="w-full h-11 bg-ink-900 hover:bg-accent text-white font-semibold rounded-xl text-xs transition">
+                    {authModal.isSignup ? 'Create Account' : 'Sign In'}
+                  </button>
+
+                  <div className="text-center pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setAuthModal({ ...authModal, isSignup: !authModal.isSignup })}
+                      className="text-xs text-ink-500 hover:text-ink-900 font-medium"
+                    >
+                      {authModal.isSignup ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* ==========================================
+              GLOBAL FOOTER
+          ========================================== */}
+          <footer className="bg-[#0B1F3A] text-ink-400 py-12 mt-auto border-t border-[#07162B]">
+            <div className="app-container">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                <div className="md:col-span-2 space-y-2">
+                  <p className="font-bold text-white text-sm">SHOPWISE <span className="text-accent-border">AI</span></p>
+                  <p className="text-xs text-ink-300 max-w-sm leading-relaxed">
+                    Smarter shopping decisions. Objective product discovery powered by transparent specification scoring and deterministic trade-off analysis.
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-ink-200 uppercase tracking-wider mb-2.5">Platform</p>
+                  <div className="flex flex-col space-y-2 text-xs text-ink-300">
+                    <button onClick={() => setActiveTab('discover')} className="text-left hover:text-white transition">Product Catalog</button>
+                    <button onClick={() => setActiveTab('compare')} className="text-left hover:text-white transition">Side-by-Side Matrix</button>
+                    <button onClick={() => setActiveTab('favourites')} className="text-left hover:text-white transition">Saved Gear</button>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-ink-200 uppercase tracking-wider mb-2.5">Architecture</p>
+                  <p className="text-xs text-ink-300 leading-relaxed">
+                    100-Point Suitability Index · Spring Boot REST · PostgreSQL / Supabase Database
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row justify-between items-center gap-2 text-[11px] text-ink-400">
+                <span>© 2026 ShopWise AI. All rights reserved.</span>
+                <span>Find What Fits You.</span>
+              </div>
+            </div>
+          </footer>
+
+        </div>
+      );
+    }
+
+    // Mount React Root
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
